@@ -16,6 +16,7 @@ cd warp-transducer
 mkdir build; cd build
 cmake ..
 make
+sudo make install # optional
 ```
 
 Otherwise, set `WARP_RNNT_PATH` to wherever you have `libwarprnnt.so`
@@ -30,7 +31,7 @@ export CUDA_HOME="/usr/local/cuda"
 Now install the bindings: (Please make sure the GCC version >= 4.9)
 ```
 cd pytorch_binding
-python setup.py install
+pip install . # pip install . --break-package-system
 ```
 
 If you try the above and get a dlopen error on OSX with anaconda3 (as recommended by pytorch):

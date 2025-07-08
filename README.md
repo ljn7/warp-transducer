@@ -57,6 +57,7 @@ Run cmake and build:
 ```bash
 cmake -DCUDA_TOOLKIT_ROOT_DIR=$CUDA_HOME ..
 make
+sudo make install #optional
 ```
 if it logs
 ```
