@@ -10,6 +10,7 @@ Install [PyTorch](https://github.com/pytorch/pytorch#installation).
 (i.e. `libwarprnnt.so`).  This defaults to `../build`, so from within a
 new warp-transducer clone you could build WarpRNNT like this:
 
+
 ```bash
 git clone https://github.com/HawkAaron/warp-transducer
 cd warp-transducer
@@ -89,4 +90,34 @@ forward(acts, labels, act_lens, label_lens):
     act_lens: Tensor of size (batch) containing size of each output sequence from the network
     label_lens: Tensor of (batch) containing label length of each example
     """
+```
+
+## Troubleshooting: `cuda_runtime_api.h: No such file or directory`
+
+If you encounter an error like this during installation:
+
+`
+fatal error: cuda_runtime_api.h: No such file or directory
+`
+
+This usually means the CUDA headers can't be found by the compiler. If your system has CUDA installed (e.g., version 12.9) and the file `cuda_runtime_api.h` exists somewhere like:
+
+`
+/usr/local/cuda-12.9/targets/x86_64-linux/include/cuda_runtime_api.h
+`
+
+Then you can fix this by manually setting the environment variables to point to the correct CUDA paths:
+
+```bash
+export CUDA_HOME=/usr/local/cuda-12.9
+export CFLAGS="-I$CUDA_HOME/targets/x86_64-linux/include"
+export LDFLAGS="-L$CUDA_HOME/targets/x86_64-linux/lib"
+export PATH="$CUDA_HOME/bin:$PATH"
+export LD_LIBRARY_PATH="$CUDA_HOME/lib64:$LD_LIBRARY_PATH"
+```
+
+Then run the installation again:
+
+```bash
+pip install .
 ```
