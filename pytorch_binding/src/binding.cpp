@@ -5,8 +5,7 @@
 #include "rnnt.h"
 
 #ifdef WARPRNNT_ENABLE_GPU
-    #include <ATen/cuda/CUDAContext.h>
-    #include <cuda_runtime_api.h>
+    #include "c10/cuda/CUDACachingAllocator.h"
 #endif
 
 int cpu_rnnt(torch::Tensor acts,
@@ -117,8 +116,7 @@ int gpu_rnnt(torch::Tensor acts,
 
         cudaSetDevice(acts.get_device());
 
-        void* gpu_workspace = nullptr;
-        cudaMalloc(&gpu_workspace, gpu_size_bytes);
+        void* gpu_workspace = c10::cuda::CUDACachingAllocator::raw_alloc(gpu_size_bytes);
         if (gpu_workspace == nullptr) {
             std::cerr << __FILE__ << ':' << __LINE__ << ": " << "failed to allocate GPU workspace" << std::endl;
             return -1;
@@ -130,7 +128,7 @@ int gpu_rnnt(torch::Tensor acts,
                          minibatch_size, costs.data_ptr<float>(),
                          gpu_workspace, options);
 
-        cudaFree(gpu_workspace);
+        c10::cuda::CUDACachingAllocator::raw_delete(gpu_workspace);
         return 0;
         }
       case torch::kDouble:
@@ -141,8 +139,7 @@ int gpu_rnnt(torch::Tensor acts,
 
         cudaSetDevice(acts.get_device());
 
-        void* gpu_workspace = nullptr;
-        cudaMalloc(&gpu_workspace, gpu_size_bytes);
+        void* gpu_workspace = c10::cuda::CUDACachingAllocator::raw_alloc(gpu_size_bytes);
         if (gpu_workspace == nullptr) {
             std::cerr << __FILE__ << ':' << __LINE__ << ": " << "failed to allocate GPU workspace" << std::endl;
             return -1;
@@ -154,7 +151,7 @@ int gpu_rnnt(torch::Tensor acts,
                          minibatch_size, costs.data_ptr<double>(),
                          gpu_workspace, options);
 
-        cudaFree(gpu_workspace);
+        c10::cuda::CUDACachingAllocator::raw_delete(gpu_workspace);
         return 0;
         }
       default:
