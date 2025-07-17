@@ -15,6 +15,7 @@ int cpu_rnnt(torch::Tensor acts,
             torch::Tensor costs,
             torch::Tensor grads,
             int blank_label,
+            float fastemit_lambda,
             int num_threads) {
 
     int maxT = acts.size(0);
@@ -32,6 +33,7 @@ int cpu_rnnt(torch::Tensor acts,
     memset(&options, 0, sizeof(options));
     options.maxT = maxT;
     options.maxU = maxU;
+    options.fastemit_lambda = fastemit_lambda;
     options.blank_label = blank_label;
     options.batch_first = true;
     options.loc = RNNT_CPU;
@@ -87,6 +89,7 @@ int gpu_rnnt(torch::Tensor acts,
             torch::Tensor costs,
             torch::Tensor grads,
             int blank_label,
+            float fastemit_lambda,
             int num_threads) {
 
     int minibatch_size = acts.size(0);
@@ -101,6 +104,7 @@ int gpu_rnnt(torch::Tensor acts,
     options.blank_label = blank_label;
     options.loc = RNNT_GPU;
     options.stream = at::cuda::getCurrentCUDAStream();
+    options.fastemit_lambda = fastemit_lambda;
     options.num_threads = num_threads;
 #if defined(RNNT_DISABLE_OMP) || defined(APPLE)
     // have to use at least one

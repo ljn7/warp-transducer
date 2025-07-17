@@ -55,12 +55,13 @@ rnntStatus_t compute_rnnt_loss(const float* const activations, //BTUV
         alphabet_size <= 0 ||
         minibatch <= 0 ||
         options.maxT <= 0 ||
-        options.maxU <= 0)
+        options.maxU <= 0 ||
+        options.fastemit_lambda < 0)
         return RNNT_STATUS_INVALID_VALUE;
 
     if (options.loc == RNNT_CPU) {
         CpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
-                                options.blank_label, options.num_threads, options.batch_first);
+                            options.blank_label, options.fastemit_lambda, options.num_threads, options.batch_first);
 
         if (gradients != NULL)
             return rnnt.cost_and_grad(activations, gradients,
@@ -73,7 +74,7 @@ rnntStatus_t compute_rnnt_loss(const float* const activations, //BTUV
     } else if (options.loc == RNNT_GPU) {
 #ifdef __CUDACC__
         GpuRNNT<float> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace,
-                                options.blank_label, options.num_threads, options.stream);
+                            options.blank_label, options.fastemit_lambda, options.num_threads, options.stream);
 
         if (gradients != NULL)
             return rnnt.cost_and_grad(activations, gradients,
@@ -147,12 +148,13 @@ rnntStatus_t compute_rnnt_loss_fp64(const double* const activations, //BTUV
         alphabet_size <= 0 ||
         minibatch <= 0 ||
         options.maxT <= 0 ||
-        options.maxU <= 0)
+        options.maxU <= 0 ||
+        options.fastemit_lambda < 0)
         return RNNT_STATUS_INVALID_VALUE;
 
     if (options.loc == RNNT_CPU) {
         CpuRNNT<double> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace, 
-                                options.blank_label, options.num_threads, options.batch_first);
+                                options.blank_label, options.fastemit_lambda, options.num_threads, options.batch_first);
 
         if (gradients != NULL)
             return rnnt.cost_and_grad(activations, gradients,
@@ -165,7 +167,7 @@ rnntStatus_t compute_rnnt_loss_fp64(const double* const activations, //BTUV
     } else if (options.loc == RNNT_GPU) {
 #ifdef __CUDACC__
         GpuRNNT<double> rnnt(minibatch, options.maxT, options.maxU, alphabet_size, workspace,
-                                options.blank_label, options.num_threads, options.stream);
+                                options.blank_label, options.fastemit_lambda, options.num_threads, options.stream);
 
         if (gradients != NULL)
             return rnnt.cost_and_grad(activations, gradients,
