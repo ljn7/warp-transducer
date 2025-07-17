@@ -8,7 +8,7 @@ from torch.utils.cpp_extension import BuildExtension, CppExtension
 
 
 extra_compile_args = ['-fPIC']
-if Version(torch.__version__) >= Version("1.8.0"):
+if Version(torch.__version__) >= Version("2.1.0"):
     extra_compile_args += ['-std=c++17']
 elif Version(torch.__version__) >= Version("1.5.0"):
     extra_compile_args += ['-std=c++14']
@@ -47,6 +47,9 @@ setup(
     author="Mingkun Huang",
     author_email="mingkunhuang95@gmail.com",
     packages=find_packages(),
+    install_requires=[
+        'packaging'
+    ],
     ext_modules=[
         CppExtension(
             name='warprnnt_pytorch.warp_rnnt',
