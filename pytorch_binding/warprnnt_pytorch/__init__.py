@@ -9,7 +9,7 @@ __all__ = ['rnnt_loss', 'RNNTLoss']
 
 class _RNNT(Function):
     @staticmethod
-    def forward(ctx, acts, labels, act_lens, label_lens, blank, reduction):
+    def forward(ctx, acts, labels, act_lens, label_lens, blank, reduction, fastemit_lambda):
         """
         acts: Tensor of (batch x seqLength x labelLength x outputDim) containing output from network
         labels: 2 dimensional Tensor containing all the targets of the batch with zero padded
