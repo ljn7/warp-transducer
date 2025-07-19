@@ -6,8 +6,16 @@ endif()
 
 project(rnnt_release LANGUAGES CXX CUDA)
 
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
+    find_package(CUDAToolkit)
+    set(CUDA_FOUND ${CUDAToolkit_FOUND})
+else()
+    find_package(CUDA)
+    set(CUDA_FOUND ${CUDA_FOUND})
+endif()
+
 # ==== USER OPTIONS ====
-option(WITH_GPU "Build with CUDA support" ON)
+option(WITH_GPU "Build with CUDA support" ${CUDA_FOUND})
 option(WITH_OMP "Build with OpenMP support" ON)
 option(USE_NAIVE_KERNEL "Use naive alpha-beta kernel" OFF)
 option(DEBUG_TIME "Output kernel time" OFF)
