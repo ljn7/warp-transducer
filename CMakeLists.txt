@@ -1,35 +1,64 @@
-if(APPLE)
-    cmake_minimum_required(VERSION 3.4)
-else()
-    cmake_minimum_required(VERSION 3.5)
-endif()
+cmake_minimum_required(VERSION 3.10)
+
+option(WITH_GPU "Build with GPU (CUDA) support" ON)
+
+set(CUDA_FOUND FALSE)
+set(CUDA_TOOLKIT_VERSION "0.0")
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
     find_package(CUDAToolkit QUIET)
-    set(CUDA_FOUND ${CUDAToolkit_FOUND})
+
+    if(CMAKE_VERSION VERSION_LESS "3.27")
+        find_package(CUDA QUIET)
+    endif()
+
+    if(CUDAToolkit_FOUND OR CUDA_FOUND)
+        set(CUDA_FOUND TRUE)
+        if(CUDAToolkit_FOUND)
+            set(CUDA_TOOLKIT_VERSION "${CUDAToolkit_VERSION}")
+        elseif(DEFINED CUDA_VERSION AND NOT "${CUDA_VERSION}" STREQUAL "")
+            set(CUDA_TOOLKIT_VERSION "${CUDA_VERSION}")
+        endif()
+    endif()
 else()
     find_package(CUDA QUIET)
-    set(CUDA_FOUND ${CUDA_FOUND})
+    if(CUDA_FOUND)
+        if(DEFINED CUDA_VERSION AND NOT "${CUDA_VERSION}" STREQUAL "")
+            set(CUDA_TOOLKIT_VERSION "${CUDA_VERSION}")
+        endif()
+    endif()
 endif()
 
-if(CUDA_FOUND)
+if(NOT WITH_GPU)
+    message(STATUS "WITH_GPU=OFF: forcing CPU-only build, even if CUDA is available")
+    set(CUDA_FOUND FALSE)
+endif()
+
+if(WITH_GPU AND NOT CUDA_FOUND)
+    message(FATAL_ERROR "WITH_GPU=ON but no compatible CUDA toolkit was found")
+endif()
+
+if(WITH_GPU AND CUDA_FOUND)
     project(rnnt_release LANGUAGES CXX CUDA)
-    message(STATUS "CUDA found, enabling GPU support")
+    set(USE_CUDA TRUE)
+    message(STATUS "CUDA ${CUDA_TOOLKIT_VERSION} found, GPU build enabled")
 else()
     project(rnnt_release LANGUAGES CXX)
-    message(STATUS "CUDA not found, building CPU-only version")
+    set(USE_CUDA FALSE)
+    message(STATUS "CUDA not found or disabled, building CPU-only version")
 endif()
 
 # ==== USER OPTIONS ====
-option(WITH_GPU "Build with CUDA support" ${CUDA_FOUND})
 option(WITH_OMP "Build with OpenMP support" ON)
 option(USE_NAIVE_KERNEL "Use naive alpha-beta kernel" OFF)
 option(DEBUG_TIME "Output kernel time" OFF)
 option(DEBUG_KERNEL "Output alpha beta debug" OFF)
 
-if(WITH_GPU AND NOT CUDA_FOUND)
-    message(WARNING "WITH_GPU requested but CUDA not found. Building CPU-only version.")
-    set(WITH_GPU OFF)
+if(WITH_OMP)
+    find_package(OpenMP)
+    if(OpenMP_CXX_FOUND)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    endif()
 endif()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -61,31 +90,8 @@ if(NOT WITH_OMP)
     list(APPEND COMMON_DEFINITIONS -DRNNT_DISABLE_OMP)
 endif()
 
-if(WITH_OMP)
-    find_package(OpenMP)
-    if(OpenMP_CXX_FOUND)
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-    endif()
-endif()
-
 # ==== CUDA SETUP (only if WITH_GPU is ON) ====
-if(WITH_GPU)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
-        find_package(CUDAToolkit REQUIRED)
-        set(CUDA_TOOLKIT_VERSION "${CUDAToolkit_VERSION}")
-        if(NOT CUDA_TOOLKIT_VERSION OR "${CUDA_TOOLKIT_VERSION}" STREQUAL "")
-            set(CUDA_TOOLKIT_VERSION "0.0")
-        endif()
-    else()
-        find_package(CUDA REQUIRED)
-        if(DEFINED CUDA_VERSION AND NOT "${CUDA_VERSION}" STREQUAL "")
-            set(CUDA_TOOLKIT_VERSION "${CUDA_VERSION}")
-        else()
-            set(CUDA_TOOLKIT_VERSION "0.0")
-        endif()
-    endif()
-
-    # Split CUDA version into major/minor
+if(USE_CUDA)
     function(cuda_version_major VERSION OUTVAR)
         if(NOT "${VERSION}" STREQUAL "")
             string(REPLACE "." ";" TMP_LIST ${VERSION})
@@ -95,6 +101,7 @@ if(WITH_GPU)
             set(${OUTVAR} "0" PARENT_SCOPE)
         endif()
     endfunction()
+
     function(cuda_version_minor VERSION OUTVAR)
         if(NOT "${VERSION}" STREQUAL "")
             string(REPLACE "." ";" TMP_LIST ${VERSION})
@@ -125,7 +132,6 @@ if(WITH_GPU)
         set(CUDA_ARCH_LIST "52;60;70;75;80;86;89")
     endif()
 
-
     if(DEFINED CMAKE_CUDA_ARCHITECTURES AND NOT "${CMAKE_CUDA_ARCHITECTURES}" STREQUAL "")
         set(CUDA_ARCH_LIST "${CMAKE_CUDA_ARCHITECTURES}")
     endif()
@@ -145,11 +151,9 @@ if(WITH_GPU)
 
     if(CUDA_TOOLKIT_VERSION AND CUDA_VERSION_MAJOR LESS 11)
         if(CUDA_ARCH_LIST MATCHES "80|86|89")
-            message(WARNING "
-    Detected CUDA ${CUDA_TOOLKIT_VERSION}.
-    Some requested architectures (${CUDA_ARCH_LIST}) require CUDA >= 11 (Ampere/Ada).
-    Remove sm_80/86/89 or upgrade CUDA Toolkit if you see NVCC errors.
-    ")
+            message(WARNING "\nDetected CUDA ${CUDA_TOOLKIT_VERSION}.
+            Some requested architectures (${CUDA_ARCH_LIST}) require CUDA >= 11 (Ampere/Ada).
+            Remove sm_80/86/89 or upgrade CUDA Toolkit if you see NVCC errors.\n")
         endif()
     endif()
 endif()
@@ -166,27 +170,50 @@ else()
     set(CMAKE_SKIP_RPATH TRUE)
 endif()
 
+set(RNNT_ENTRYPOINT_SRC src/rnnt_entrypoint.cu)
+if(NOT USE_CUDA)
+    configure_file(
+        ${RNNT_ENTRYPOINT_SRC}
+        ${CMAKE_CURRENT_BINARY_DIR}/rnnt_entrypoint_cpu.cpp
+        COPYONLY
+    )
+    set(RNNT_ENTRYPOINT_SRC ${CMAKE_CURRENT_BINARY_DIR}/rnnt_entrypoint_cpu.cpp)
+endif()
+
 # ==== Main library target ====
-if(WITH_GPU)
+if(USE_CUDA)
     message(STATUS "Building shared library with GPU support")
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
-        add_library(warprnnt SHARED src/rnnt_entrypoint.cu)
+        add_library(warprnnt SHARED ${RNNT_ENTRYPOINT_SRC})
         target_link_libraries(warprnnt PRIVATE CUDA::cudart CUDA::curand)
     else()
-        CUDA_ADD_LIBRARY(warprnnt SHARED src/rnnt_entrypoint.cu)
+        CUDA_ADD_LIBRARY(warprnnt SHARED ${RNNT_ENTRYPOINT_SRC})
         if(NOT Torch_FOUND)
             TARGET_LINK_LIBRARIES(warprnnt ${CUDA_curand_LIBRARY})
         endif()
     endif()
 else()
     message(STATUS "Building shared library with no GPU support")
-    add_library(warprnnt SHARED src/rnnt_entrypoint.cpp)
+    add_library(warprnnt SHARED ${RNNT_ENTRYPOINT_SRC})
+endif()
+
+set_target_properties(warprnnt PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+if(WIN32)
+    set_target_properties(warprnnt PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
+    )
 endif()
 
 target_compile_features(warprnnt PRIVATE cxx_std_17)
 target_compile_definitions(warprnnt PRIVATE ${COMMON_DEFINITIONS})
 target_include_directories(warprnnt PRIVATE include)
-if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18" AND TARGET warprnnt AND WITH_GPU)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18" AND TARGET warprnnt AND USE_CUDA)
     set_target_properties(warprnnt PROPERTIES
         CUDA_SEPARABLE_COMPILATION ON
         CUDA_STANDARD 17
@@ -206,7 +233,7 @@ add_executable(test_time tests/test_time.cpp tests/random.cpp)
 target_link_libraries(test_time PRIVATE warprnnt)
 target_compile_features(test_time PRIVATE cxx_std_17)
 
-if(WITH_GPU)
+if(USE_CUDA)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.18")
         add_executable(test_time_gpu tests/test_time.cu tests/random.cpp)
         target_link_libraries(test_time_gpu PRIVATE warprnnt CUDA::curand)
@@ -232,11 +259,11 @@ if(WITH_GPU)
             $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>
         )
     else()
-        cuda_add_executable(test_time_gpu tests/test_time.cu tests/random.cpp )
+        cuda_add_executable(test_time_gpu tests/test_time.cu tests/random.cpp)
         TARGET_LINK_LIBRARIES(test_time_gpu warprnnt ${CUDA_curand_LIBRARY})
         set_target_properties(test_time_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
 
-        cuda_add_executable(test_gpu tests/test_gpu.cu tests/random.cpp )
+        cuda_add_executable(test_gpu tests/test_gpu.cu tests/random.cpp)
         TARGET_LINK_LIBRARIES(test_gpu warprnnt ${CUDA_curand_LIBRARY})
         set_target_properties(test_gpu PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} --std=c++11")
     endif()
@@ -244,8 +271,10 @@ endif()
 
 # ==== Install targets ====
 install(TARGETS warprnnt
-        RUNTIME DESTINATION bin
-        LIBRARY DESTINATION lib
-        ARCHIVE DESTINATION lib)
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
 
 install(FILES include/rnnt.h DESTINATION include)
+
