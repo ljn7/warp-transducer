@@ -63,7 +63,7 @@ Benchmarked on GeForce GTX 1080 Ti:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/HawkAaron/warp-transducer
+   git clone https://github.com/ljn7/warp-transducer
    cd warp-transducer
    ```
 
@@ -112,7 +112,7 @@ Benchmarked on GeForce GTX 1080 Ti:
 2. **Clone the repository:**
 
    ```cmd
-   git clone https://github.com/HawkAaron/warp-transducer
+   git clone https://github.com/ljn7/warp-transducer
    cd warp-transducer
    ```
 
