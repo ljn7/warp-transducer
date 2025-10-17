@@ -1,6 +1,6 @@
 # WarpRNNT PyTorch Binding
 
-PyTorch bindings for the [WarpRNNT](https://github.com/HawkAaron/warp-transducer) library, providing efficient RNN-Transducer loss computation with GPU acceleration.
+PyTorch bindings for the [WarpRNNT](https://github.com/ljn7/warp-transducer) library, providing efficient RNN-Transducer loss computation with GPU acceleration.
 
 ## Overview
 
@@ -258,11 +258,11 @@ pip install . -v
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests to the [WarpRNNT repository](https://github.com/HawkAaron/warp-transducer).
+Contributions are welcome! Please feel free to submit issues or pull requests to the [WarpRNNT repository](https://github.com/ljn7/warp-transducer).
 
 ## License
 
-This project follows the license of the parent WarpRNNT library. Please refer to the [main repository](https://github.com/HawkAaron/warp-transducer) for details.
+This project follows the license of the parent WarpRNNT library. Please refer to the [main repository](https://github.com/ljn7/warp-transducer) for details.
 
 ## Acknowledgments
 
@@ -272,6 +272,6 @@ Built on top of the excellent [WarpRNNT](https://github.com/HawkAaron/warp-trans
 
 ## Links
 
-- **WarpRNNT Library**: https://github.com/HawkAaron/warp-transducer
+- **WarpRNNT Library**: https://github.com/ljn7/warp-transducer
 - **PyTorch**: https://pytorch.org
 - **CUDA Toolkit**: https://developer.nvidia.com/cuda-downloads
